@@ -64,11 +64,23 @@ def compute_win_rates(summaries: dict) -> dict:
     return results
 
 
-def generate_win_rate_chart(results: dict, output_path: str = "figures/win_rates.pdf"):
+def generate_win_rate_chart(results: dict, output_path: str = "figures/win_rates.pdf",
+                            configs_filter: list = None):
     """Generate grouped bar chart comparing crew vs impostor win rates."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    configs = list(results.keys())
+    if configs_filter:
+        configs = [c for c in configs_filter if c in results]
+    else:
+        configs = list(results.keys())
+
+    DISPLAY_NAMES = {
+        "all_random": "All-Random",
+        "all_llm": "All-LLM",
+        "llm_crew": "LLM-Crew",
+        "llm_impostor": "LLM-Impostor",
+    }
+
     crew_rates = [results[c]["crew_rate"] for c in configs]
     imp_rates = [results[c]["imp_rate"] for c in configs]
     crew_ci = [results[c]["crew_ci"] for c in configs]
@@ -77,19 +89,24 @@ def generate_win_rate_chart(results: dict, output_path: str = "figures/win_rates
     x = np.arange(len(configs))
     width = 0.35
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(8, 5))
     ax.bar(x - width/2, crew_rates, width, yerr=crew_ci, label="Crewmate Win Rate",
-           color="#4878CF", capsize=4)
+           color="#4878CF", capsize=5, edgecolor="white", linewidth=0.5)
     ax.bar(x + width/2, imp_rates, width, yerr=imp_ci, label="Impostor Win Rate",
-           color="#E8743B", capsize=4)
+           color="#E8743B", capsize=5, edgecolor="white", linewidth=0.5)
 
     ax.set_ylabel("Win Rate")
     ax.set_title("Win Rates Across Configurations")
     ax.set_xticks(x)
-    labels = [c.replace("_", "\n") for c in configs]
+    labels = [DISPLAY_NAMES.get(c, c.replace("_", "\n")) for c in configs]
     ax.set_xticklabels(labels)
     ax.legend()
-    ax.set_ylim(0, 1.1)
+    # y-axis: leave room for error bars but don't exceed 1.0 unless necessary
+    max_upper = max(
+        max(r + ci for r, ci in zip(crew_rates, crew_ci)),
+        max(r + ci for r, ci in zip(imp_rates, imp_ci)),
+    )
+    ax.set_ylim(0, min(max_upper + 0.10, 1.25))
     ax.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
 
     plt.tight_layout()
