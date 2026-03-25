@@ -1,0 +1,20 @@
+\begin{table}[h]
+\centering
+\caption{Ablation study results.}
+\label{tab:ablations}
+\begin{tabular}{lccc}
+\toprule
+Setting & $N$ & Crew Win\% & Imp Win\% \\
+\midrule
+\multicolumn{4}{l}{\textit{Memory Size}} \\
+$N_{\max}=0$ & 5 & 0% & 100% \\
+$N_{\max}=5$ & 5 & 20% & 80% \\
+$N_{\max}=10$ & 14 & 36% & 64% \\
+$N_{\max}=20$ & 7 & 29% & 71% \\
+\midrule
+\multicolumn{4}{l}{\textit{Planning}} \\
+With Planning & 14 & 36% & 64% \\
+No Planning & 6 & 33% & 67% \\
+\bottomrule
+\end{tabular}
+\end{table}

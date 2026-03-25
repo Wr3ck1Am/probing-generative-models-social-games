@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs (too large for git)
+amongagents/logs/
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.synctex.gz
+
+# Claude
+.claude/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Misc junk files
+amongagents/#
+amongagents/Agent基类
+amongagents/key等）
+amongagents/主循环
+amongagents/地图定义
+amongagents/游戏状态管理
+amongagents/配置（API

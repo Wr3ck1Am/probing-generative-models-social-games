@@ -1,0 +1,19 @@
+\begin{table}[h]
+\centering
+\caption{Win rates across experimental configurations. CI = 95\% confidence interval.}
+\label{tab:winrates}
+\begin{tabular}{lcccccc}
+\toprule
+Config & $N$ & Crew Win\% & Imp Win\% & Avg Steps & Avg Kills \\
+\midrule
+memory\_20 & 7 & 29% $\pm$ 33% & 71% $\pm$ 33% & 14.9 & 2.0 \\
+llm\_crew & 14 & 93% $\pm$ 13% & 7% $\pm$ 13% & 7.1 & 0.8 \\
+memory\_0 & 5 & 0% $\pm$ 0% & 100% $\pm$ 0% & 15.4 & 2.4 \\
+no\_planning & 6 & 33% $\pm$ 38% & 67% $\pm$ 38% & 14.5 & 2.3 \\
+all\_llm & 14 & 36% $\pm$ 25% & 64% $\pm$ 25% & 11.9 & 1.6 \\
+all\_random & 10 & 10% $\pm$ 19% & 90% $\pm$ 19% & 18.4 & 1.1 \\
+llm\_impostor & 15 & 27% $\pm$ 22% & 73% $\pm$ 22% & 16.1 & 1.9 \\
+memory\_5 & 5 & 20% $\pm$ 35% & 80% $\pm$ 35% & 13.0 & 2.0 \\
+\bottomrule
+\end{tabular}
+\end{table}

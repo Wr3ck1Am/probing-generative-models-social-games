@@ -1,0 +1,552 @@
+\documentclass{article}
+\usepackage[preprint]{neurips_2025}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+
+\title{Probing Generative Models Through Adversarial Social Games:\\ Deception, Memory, and Reasoning in Among Us}
+
+\author{
+  Wenpeng Xu \\
+  Electrical and Computer Engineering \\
+  UC San Diego \\
+  \texttt{wex019@ucsd.edu} \\
+  \And
+  Jinglin Cao \\
+  Electrical and Computer Engineering \\
+  UC San Diego \\
+  \texttt{jic179@ucsd.edu} \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Large generative models exhibit impressive language production capabilities, but their deeper cognitive properties---deception generation versus detection, context-dependent reasoning, and strategic adaptation---remain poorly understood.
+We use the social deduction game \textit{Among Us} as a controlled probe for these latent capabilities, building on the \textsc{AmongAgents} framework~\cite{chi2024amongagents}.
+Our text-based simulation features a 14-room environment with memory-augmented agents using ReAct-style structured prompting and OpenAI function calling.
+Through systematic experiments with GPT-5-mini across four agent configurations and ablation studies ($N=76$ games), we uncover two robust properties and one informative negative result:
+(1)~\textbf{Deception asymmetry}---the model detects unsophisticated deception nearly perfectly (93\% Crewmate win rate vs.\ random Impostors) but struggles against its own deception quality (36\% vs.\ LLM Impostors), a 57-point gap revealing that generation outpaces detection;
+(2)~\textbf{Context dependency}---Crewmate win rates scale monotonically with memory size ($0\% \to 20\% \to 36\%$ for $N_{\max} = 0, 5, 10$), demonstrating that social reasoning collapses without temporal context;
+(3)~\textbf{Planning is not the bottleneck}---ReAct-style structured prompting provides negligible benefit over minimal prompting (36\% vs.\ 33\%), suggesting that information access, not reasoning structure, is the binding constraint.
+These findings illuminate which cognitive components are necessary for social reasoning in generative models and where their fundamental limitations lie.
+\end{abstract}
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+Generative language models are increasingly deployed in complex, interactive settings---from conversational agents to autonomous decision-making systems. While standard benchmarks evaluate factual knowledge and logical reasoning, they reveal little about deeper properties of these models: How do they handle information asymmetry? Can they maintain consistent deceptive narratives? Do they reason about other agents' beliefs? These questions are fundamental to understanding what generative models have actually learned.
+
+We argue that \emph{adversarial social games} provide a uniquely informative probe for the latent structure of generative models. Unlike static benchmarks that test isolated capabilities, these games simultaneously engage multiple cognitive dimensions: sustained multi-turn reasoning under partial observability, strategic communication with hidden intent, belief tracking across agents, and real-time adaptation. The social deduction game \textit{Among Us}---where Crewmates must identify a hidden Impostor through spatial observation and free-form discussion---naturally elicits these capabilities, making it an ideal experimental instrument for dissecting how generative models process social information.
+
+Our work builds on the \textsc{AmongAgents} framework~\cite{chi2024amongagents} and contributes:
+
+\begin{itemize}
+    \item A controlled experimental platform for probing generative model capabilities in adversarial social settings, with 14-room spatial topology, memory-augmented agents, and structured game mechanics.
+    \item A factorial design across four agent configurations (All-Random, All-LLM, LLM-Crewmate, LLM-Impostor) that isolates the model's deception generation from its detection capability.
+    \item Ablation studies on memory ($N_{\max} \in \{0, 5, 10, 20\}$) and planning prompts ($N=76$ games) that disentangle the contributions of information access and reasoning structure to social cognition.
+    \item Post-hoc analysis (conversation classification and 5-dimension cognitive evaluation) that characterizes \emph{how} the model succeeds and fails, beyond aggregate win rates.
+\end{itemize}
+
+Our central finding is a \emph{generation--detection gap}: GPT-5-mini produces deceptive narratives that are nearly as persuasive as truthful ones (2.8 vs.\ 3.2 out of 5), yet lacks the analytical verification capability to detect such deception. Crewmates win 93\% of games against random Impostors ($N=14$) but only 36\% against LLM Impostors ($N=14$)---a 57-point gap that ablation studies trace to information access (memory) rather than reasoning structure (planning). This asymmetry has implications for AI safety: models in adversarial social settings may be systematically better at generating manipulation than at verifying truthfulness.
+
+%==============================================================================
+\section{Related Work}
+%==============================================================================
+
+\textbf{Probing generative models.}
+Beyond standard benchmarks, researchers have explored interactive settings to probe model capabilities. Park et al.~\cite{park2023generative} demonstrate emergent social behavior in generative agent simulations. Bakhtin et al.~\cite{bakhtin2022diplomacy} show that language models can combine with strategic reasoning for human-level Diplomacy play. We extend this line of work to adversarial social deduction.
+
+\textbf{Social deduction with LLMs.}
+Xu et al.~\cite{xu2023werewolf} explore Werewolf with LLMs, finding models can participate but struggle with deep social reasoning. Wang et al.~\cite{wang2023avalon} study Avalon, showing that chain-of-thought prompting improves deception detection. Chi et al.~\cite{chi2024amongagents} introduce \textsc{AmongAgents} for Among Us, which we replicate and extend with ablation studies and a generative-model-focused analysis.
+
+\textbf{Theory of Mind and deception in LLMs.}
+LLMs show mixed results on Theory of Mind tasks~\cite{park2023generative}. Among Us specifically requires tracking other players' knowledge states---what they could have observed given their locations. Our work characterizes the gap between producing and detecting deception, a distinction not previously quantified in game settings.
+
+\textbf{ReAct prompting.}
+Yao et al.~\cite{yao2023react} propose interleaving reasoning traces with actions. We adopt this paradigm to investigate whether explicit reasoning scaffolding activates latent strategic capabilities in the generative model.
+
+%==============================================================================
+\section{Experimental Platform}
+%==============================================================================
+
+Our experimental platform translates the social deduction dynamics of Among Us into a controlled text-based environment where every aspect of agent cognition---observation, memory, reasoning, and communication---is mediated through the generative model's language interface. This design allows us to systematically manipulate cognitive components (memory, planning) while holding the model constant.
+
+\subsection{Game Environment}
+
+We model the game as a partially observable stochastic game (POSG):
+\begin{itemize}
+    \item \textbf{State} $s_t = (\text{locations}, \text{alive}, \text{tasks}, \text{phase})$
+    \item \textbf{Observation} $\mathcal{O}^i \subset S$: Agent $i$ sees only its current room, co-located players, and dead bodies
+    \item \textbf{Actions} $\mathcal{A}^i$: Shared (\textsc{move, speak, vote}), Crewmate-only (\textsc{complete\_task}), Impostor-only (\textsc{kill})
+    \item \textbf{Phases}: \textsc{task} (exploration) $\leftrightarrow$ \textsc{meeting} (discussion + voting)
+\end{itemize}
+
+\textbf{Map.} The game world consists of 14 rooms $\mathcal{R} = \{\text{Cafeteria}, \text{Weapons}, \text{Electrical}, \ldots\}$ connected by an adjacency graph (Figure~\ref{fig:map}). All players start in Cafeteria.
+
+\textbf{Game flow.} Each timestep, all alive players choose an action. Every 5 timesteps, a scheduled meeting is triggered. Meetings are also triggered when a Crewmate discovers a dead body. Meetings consist of 2 discussion rounds followed by 1 voting round. The player with a majority of votes is ejected.
+
+\textbf{Victory conditions.} Crewmates win if all Impostors are ejected or all tasks are completed. Impostors win if the number of alive Impostors equals or exceeds alive Crewmates, or if time runs out.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{0.95\linewidth}{!}{%
+    \begin{tikzpicture}[
+        room/.style={draw, rounded corners=3pt, fill=blue!8, minimum width=1.4cm, minimum height=0.6cm, font=\scriptsize\sffamily, align=center, inner sep=2pt},
+        edge/.style={-, thick, gray!70},
+        node distance=1.2cm and 1.4cm
+    ]
+    % Top row
+    \node[room] (cafe) {Cafeteria};
+    \node[room, right=1.8cm of cafe] (weap) {Weapons};
+    \node[room, right=1.4cm of weap] (o2) {O2};
+    \node[room, right=1.4cm of o2] (nav) {Navigation};
+
+    % Middle-upper row
+    \node[room, above=0.9cm of cafe] (medbay) {MedBay};
+    \node[room, left=1.2cm of cafe] (ueng) {Upper\\Engine};
+
+    % Middle-lower row
+    \node[room, below=0.9cm of cafe] (admin) {Admin};
+    \node[room, below=1.4cm of o2] (shields) {Shields};
+    \node[room, below=1.4cm of nav] (comms) {Comms};
+
+    % Bottom row
+    \node[room, below=0.9cm of admin] (storage) {Storage};
+    \node[room, left=1.2cm of storage] (elec) {Electrical};
+    \node[room, left=1.2cm of elec] (leng) {Lower\\Engine};
+
+    % Left column
+    \node[room, above=0.9cm of leng] (reactor) {Reactor};
+    \node[room, above=0.9cm of reactor] (security) {Security};
+
+    % Edges - Cafeteria connections
+    \draw[edge] (cafe) -- (weap);
+    \draw[edge] (cafe) -- (admin);
+    \draw[edge] (cafe) -- (ueng);
+    \draw[edge] (cafe) -- (medbay);
+
+    % Weapons area
+    \draw[edge] (weap) -- (o2);
+    \draw[edge] (weap) -- (nav);
+
+    % Right side
+    \draw[edge] (o2) -- (nav);
+    \draw[edge] (o2) -- (shields);
+    \draw[edge] (nav) -- (shields);
+
+    % Shields area
+    \draw[edge] (shields) -- (comms);
+    \draw[edge] (shields) -- (storage);
+
+    % Bottom connections
+    \draw[edge] (comms) -- (storage);
+    \draw[edge] (storage) -- (admin);
+    \draw[edge] (storage) -- (elec);
+
+    % Left side
+    \draw[edge] (elec) -- (leng);
+    \draw[edge] (leng) -- (reactor);
+    \draw[edge] (leng) -- (security);
+    \draw[edge] (reactor) -- (security);
+    \draw[edge] (reactor) -- (ueng);
+    \draw[edge] (security) -- (ueng);
+    \draw[edge] (ueng) -- (medbay);
+
+    \end{tikzpicture}%
+    }
+    \caption{Graph topology of the 14-room Among Us map. Edges represent adjacency (agents can move between connected rooms). All players start in Cafeteria. The spatial structure creates partial observability---agents only see co-located players.}
+    \label{fig:map}
+\end{figure}
+
+\subsection{Agent Architecture}
+
+Each agent receives a natural-language observation and selects an action via GPT-5-mini's function calling API. The architecture has three components.
+
+\textbf{Observation space.} The game state is serialized into a structured prompt: current phase, timestep, player location, co-located players, dead bodies, adjacent rooms, alive players, and remaining tasks (Crewmates only).
+
+\textbf{Memory system.} The agent maintains a rolling memory $H^i_t$ of (observation, action) pairs. When $|H^i_t| > N_{\max}$, the oldest entries are compressed via an LLM summarization call:
+\begin{equation}
+    H^i_{\text{compressed}} = \text{LLM}(\text{``Summarize: ''} + H^i_{1:5}) \oplus H^i_{6:t}
+    \label{eq:memory}
+\end{equation}
+The most recent 5 entries are included in the prompt. This design probes the model's ability to leverage temporal context for social reasoning.
+
+\textbf{Policy with ReAct planning.} The agent's policy maps observations, memory, and personality to actions:
+\begin{equation}
+    \pi^i : \mathcal{O}^i \times H^i_t \times P^i \to \Delta(\mathcal{A}^i)
+    \label{eq:policy}
+\end{equation}
+where $P^i$ is a personality prompt (Section~\ref{sec:personality}). Following ReAct~\cite{yao2023react}, the agent produces structured reasoning before acting:
+\begin{align*}
+    \texttt{[THOUGHT]} &\to \text{Analyze current situation and goals} \\
+    \texttt{[PLAN]} &\to \text{Formulate 2--3 step strategy} \\
+    \texttt{[ACTION]} &\to \text{Execute via function call}
+\end{align*}
+
+Actions are implemented as OpenAI function calls with \texttt{tool\_choice="required"}, ensuring structured output. Available tools change based on game phase and player role.
+
+\subsection{Personality System}
+\label{sec:personality}
+
+Following Chi et al.~\cite{chi2024amongagents}, we define 10 personality archetypes (5 per role) injected via system prompt, including The Strategist, The Manipulator, and The Lone Wolf for Impostors, and The Leader, The Observer, and The Skeptic for Crewmates (full list in Appendix). These serve as controlled perturbations to probe persona-driven behavioral consistency.
+
+\subsection{Game Loop}
+
+\begin{algorithm}[h]
+\caption{Multi-Agent Among Us Simulation}
+\label{alg:game}
+\begin{algorithmic}[1]
+\STATE Initialize: All at Cafeteria, assign tasks, $H^i_0 = \emptyset$
+\WHILE{not ended}
+    \IF{phase = \textsc{task}}
+        \FOR{all alive agent $i$}
+            \STATE $a^i_t \sim \pi^i(\text{observe}(), H^i_t, P^i)$
+            \STATE Execute $a^i_t$, update $H^i_t$
+            \IF{body discovered by Crewmate}
+                \STATE phase $\leftarrow$ \textsc{meeting}
+            \ENDIF
+        \ENDFOR
+        \IF{$t \bmod 5 = 0$}
+            \STATE phase $\leftarrow$ \textsc{meeting}
+        \ENDIF
+    \ELSE
+        \STATE 2 discussion rounds (all alive players speak)
+        \STATE 1 voting round $\to$ eject player with majority
+        \STATE phase $\leftarrow$ \textsc{task}
+    \ENDIF
+    \STATE Check victory conditions
+\ENDWHILE
+\end{algorithmic}
+\end{algorithm}
+
+%==============================================================================
+\section{Experimental Setup}
+%==============================================================================
+
+\subsection{Model and Experimental Design}
+
+We use \textbf{GPT-5-mini} (OpenAI) as the sole generative model, chosen for its balance of capability and cost efficiency (\textasciitilde\$0.15/1M input tokens, \textasciitilde\$0.60/1M output tokens). Using a single model is a deliberate design choice: it isolates the properties of one generative system rather than conflating differences between model families. All cognitive components---perception, memory, planning, communication, and decision-making---are mediated through the same model, allowing us to attribute observed behaviors to the model's internal representations rather than to architectural differences.
+
+All experiments use 5 players (4 Crewmates + 1 Impostor) with neutral names (Alice, Bob, Charlie, Diana, Evan) and randomly assigned roles. Our four configurations form a factorial design that systematically varies which side uses the generative model:
+
+\begin{table}[h]
+\centering
+\caption{Experimental configurations. Main configurations run for $N=10$--$15$ games; ablations for $N=5$--$7$.}
+\label{tab:configs}
+\begin{tabular}{llll}
+\toprule
+Config & Crewmate Agent & Impostor Agent & What It Probes \\
+\midrule
+A1: All-Random & Random & Random & Baseline (no model) \\
+A2: All-LLM & GPT-5-mini & GPT-5-mini & Full model capabilities \\
+A3: LLM-Crew & GPT-5-mini & Random & Deception detection \\
+A4: LLM-Impostor & Random & GPT-5-mini & Deception generation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation Studies}
+
+\textbf{Memory size}: We vary $N_{\max} \in \{0, 5, 10, 20\}$ using the All-LLM configuration ($N=5$--$14$ games each) to probe the model's dependence on temporal context. $N_{\max}=0$ disables memory entirely, forcing the model to reason from the current observation alone.
+
+\textbf{Planning prompt}: We compare the full ReAct-style \texttt{[THOUGHT][PLAN][ACTION]} prompt against a minimal ``Choose your next action'' prompt ($N=6$ games), testing whether explicit reasoning scaffolding activates latent capabilities.
+
+\subsection{Evaluation Framework}
+
+\textbf{Win rate analysis.} Primary metric: win rate by faction with 95\% confidence intervals.
+
+\textbf{Controlled evaluation.} Post-hoc LLM-based scoring of each agent on 5 cognitive dimensions (1--10 scale): Self-Awareness, Memory utilization, Planning quality, Reasoning about others, and Reflection/adaptation.
+
+\textbf{Conversation analysis.} Post-hoc classification of meeting speeches into: Deception, Truth-telling, Suspicion, Defense, and Leadership. We compute deception rates by role and factual accuracy of statements.
+
+%==============================================================================
+\section{Results}
+%==============================================================================
+
+\subsection{Win Rate Analysis}
+
+Table~\ref{tab:winrates} shows win rates across the four main configurations, and Figure~\ref{fig:winrates} visualizes the results.
+
+\begin{table}[h]
+\centering
+\caption{Win rates across experimental configurations. CI = 95\% confidence interval.}
+\label{tab:winrates}
+\begin{tabular}{lccccc}
+\toprule
+Config & $N$ & Crew Win\% & Imp Win\% & Avg Steps & Avg Kills \\
+\midrule
+All-Random & 10 & 10\% $\pm$ 19\% & 90\% $\pm$ 19\% & 18.4 & 1.1 \\
+All-LLM & 14 & 36\% $\pm$ 25\% & 64\% $\pm$ 25\% & 11.9 & 1.6 \\
+LLM-Crew & 14 & 93\% $\pm$ 13\% & 7\% $\pm$ 13\% & 7.1 & 0.8 \\
+LLM-Impostor & 15 & 27\% $\pm$ 22\% & 73\% $\pm$ 22\% & 16.1 & 1.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.85\linewidth]{win_rates.pdf}
+    \caption{Win rates across experimental configurations with 95\% confidence intervals.}
+    \label{fig:winrates}
+\end{figure}
+
+\textbf{Observation 1: The model exhibits non-trivial social cognition.} All-LLM Crewmate win rate (36\%) is 3.6$\times$ higher than All-Random (10\%), confirming the model produces genuine strategic behavior rather than random play. LLM Crewmates achieve 93\% win rate against random Impostors ($N=14$), indicating that the model can effectively detect anomalous (non-strategic) behavior in a social environment---a form of behavioral pattern recognition.
+
+\textbf{Observation 2: Generation and detection are asymmetric capabilities.} The most striking result is the 57-point gap between A3 and A2: LLM Crewmates defeat random Impostors 93\% of the time but only 36\% against LLM Impostors. This reveals a fundamental asymmetry \emph{within the same model}---the generative capability that produces convincing deception is substantially stronger than the analytical capability needed to detect it. LLM Impostors win 73\% against random Crewmates (A4), further confirming that deception generation is a natural strength of the generative architecture.
+
+\textbf{Observation 3: Game dynamics reflect cognitive efficiency.} Games with LLM Crewmates end faster (7.1 steps in A3) as the model rapidly identifies anomalous behavior, while All-Random games run to near-timeout (18.4 steps). LLM Impostor games (16.1 steps, 1.9 kills) reveal deliberate timing---the model waits for spatial isolation before killing, a behavior requiring multi-step planning that emerges without explicit instruction.
+
+\subsection{Cognitive Evaluation}
+
+Table~\ref{tab:cognitive} and Figure~\ref{fig:radar} present the 5-dimension cognitive evaluation.
+
+\begin{table}[h]
+\centering
+\caption{Controlled evaluation scores (1--10) by role across All-LLM games. Mean $\pm$ std.}
+\label{tab:cognitive}
+\begin{tabular}{lcc}
+\toprule
+Dimension & Crewmate ($n$=20) & Impostor ($n$=5) \\
+\midrule
+Self-Awareness & 7.2 $\pm$ 0.4 & 7.0 $\pm$ 0.6 \\
+Memory & 6.0 $\pm$ 0.4 & 5.6 $\pm$ 0.8 \\
+Planning & 7.7 $\pm$ 0.6 & 7.2 $\pm$ 1.2 \\
+Reasoning & 4.9 $\pm$ 0.3 & 4.2 $\pm$ 1.0 \\
+Reflection & 5.8 $\pm$ 0.4 & 4.8 $\pm$ 1.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The cognitive evaluation reveals a consistent pattern: \emph{generative} capabilities (planning at 7.7/7.2, self-awareness at 7.2/7.0 for Crewmate/Impostor) substantially outperform \emph{analytical} capabilities (reasoning at 4.9/4.2, reflection at 5.8/4.8). This gap directly supports the generation--detection asymmetry observed in win rates. The model excels at producing coherent strategies and role-appropriate behavior, but struggles to infer other agents' hidden states from behavioral evidence. Notably, Impostors score \emph{lower} than Crewmates on reasoning (4.2 vs.\ 4.9) and reflection (4.8 vs.\ 5.8), suggesting that Impostor success relies on information asymmetry and fluent deception rather than superior social cognition.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.55\linewidth]{cognitive_radar.pdf}
+    \caption{Radar chart of cognitive evaluation dimensions by role. Both roles show strong planning and self-awareness but weak reasoning about others.}
+    \label{fig:radar}
+\end{figure}
+
+\subsection{Conversation Analysis}
+
+\begin{table}[h]
+\centering
+\caption{Meeting speech analysis by role across All-LLM games ($N=5$, 72 speeches total). Category rates exclude ambiguously classified speeches (52\% of total).}
+\label{tab:conversation}
+\begin{tabular}{lcc}
+\toprule
+Metric & Crewmate & Impostor \\
+\midrule
+Total speeches & 54 & 18 \\
+Successfully classified & 48\% & 48\% \\
+\midrule
+Deception rate & 0\% & 42\% \\
+Truth-telling rate & 48\% & 0\% \\
+Suspicion rate & 3\% & 25\% \\
+Defense rate & 21\% & 25\% \\
+Leadership rate & 28\% & 8\% \\
+\midrule
+Factual accuracy & 100\% & 20\% \\
+Avg persuasiveness & 3.2/5 & 2.8/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{The model produces role-appropriate communication.} Among the 72 meeting speeches from All-LLM games, we observe a clear behavioral divergence by role. Impostors engage in deception in 42\% of successfully classified speeches---primarily fabricating alibis and deflecting suspicion---while Crewmate deception is 0\%. Impostor factual accuracy is only 20\%, compared to 100\% for Crewmates, confirming that the model generates strategically inaccurate statements when playing the Impostor role. Impostors also employ active suspicion-casting (25\%) and defensive rhetoric (25\%), while Crewmates focus on truth-telling (48\%), leadership (28\%), and defense (21\%).
+
+\textbf{Persuasiveness gap is surprisingly small.} Despite the stark behavioral divergence, Impostor persuasiveness (2.8/5) is only slightly below Crewmate persuasiveness (3.2/5). This narrow gap helps explain the deception asymmetry: Impostor statements sound nearly as convincing as Crewmate statements, making detection difficult even when the content is factually inaccurate. Three specific failure modes of Crewmate detection emerge from qualitative analysis of game logs:
+\begin{enumerate}
+    \item \textbf{Recency bias}: The model over-weights the most recent observation, ignoring accumulated evidence from prior turns.
+    \item \textbf{Credibility blindness}: All player statements are treated with equal weight, regardless of cross-turn consistency.
+    \item \textbf{Generic alibis succeed}: Vague claims (``I was in Admin doing tasks'') are rarely challenged or verified against spatial constraints.
+\end{enumerate}
+
+\subsection{Ablation Results}
+
+\begin{table}[h]
+\centering
+\caption{Ablation study results. All games use the All-LLM configuration (both Crewmates and Impostor are GPT-5-mini).}
+\label{tab:ablations}
+\begin{tabular}{lccc}
+\toprule
+Setting & $N$ & Crew Win\% & Imp Win\% \\
+\midrule
+\multicolumn{4}{l}{\textit{Memory Size ($N_{\max}$)}} \\
+$N_{\max}=0$ (no memory) & 5 & 0\% & 100\% \\
+$N_{\max}=5$ & 5 & 20\% & 80\% \\
+$N_{\max}=10$ (default) & 14 & 36\% & 64\% \\
+$N_{\max}=20$ & 7 & 29\% & 71\% \\
+\midrule
+\multicolumn{4}{l}{\textit{Planning Prompt}} \\
+With Planning (ReAct) & 14 & 36\% & 64\% \\
+No Planning & 6 & 33\% & 67\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{memory_ablation.pdf}
+        \caption{Memory size ablation.}
+        \label{fig:memory}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{planning_ablation.pdf}
+        \caption{Planning ablation.}
+        \label{fig:planning}
+    \end{subfigure}
+    \caption{Ablation study results. (a)~Crewmate win rate increases monotonically with memory size, plateauing around $N_{\max}=10$. (b)~ReAct-style planning provides modest benefit over no planning.}
+    \label{fig:ablations}
+\end{figure}
+
+\textbf{Finding: Social reasoning requires sufficient context.} Without memory ($N_{\max}=0$), Crewmate performance drops to 0\% ($N=5$)---identical to the random baseline. With $N_{\max}=5$, a modest 20\% win rate emerges ($N=5$), and at $N_{\max}=10$ (default), Crewmates achieve 36\% ($N=14$). $N_{\max}=20$ yields 29\% ($N=7$), suggesting diminishing returns beyond 10 entries. The clear trend from 0\% $\to$ 20\% $\to$ 36\% confirms that social reasoning is \emph{context-dependent}: the model needs accumulated observations to track behavioral patterns and make informed voting decisions. The plateau at higher memory sizes may reflect the model's limited ability to synthesize large amounts of social information.
+
+\textbf{Finding: Structured prompting provides modest benefit.} Without ReAct-style planning, Crewmate win rate is 33\% ($N=6$), compared to 36\% ($N=14$) with planning---a small difference that does not reach statistical significance. This suggests that unlike memory, explicit reasoning scaffolding has limited impact on Crewmate performance. The model may already engage in implicit strategic reasoning without the \texttt{[THOUGHT][PLAN]} structure, or the planning prompt's benefit may be masked by the dominant effect of information asymmetry in this game.
+
+%==============================================================================
+\section{Discussion}
+%==============================================================================
+
+\subsection{What Among Us Reveals About Generative Models}
+
+Our experiments reveal a coherent picture of what enables and limits social reasoning in GPT-5-mini. We organize our discussion around the relationship between three components: \emph{information access}, \emph{reasoning structure}, and \emph{deception quality}.
+
+\textbf{1. The generation--detection gap.} The 57-point gap between Crewmate win rates against random vs.\ LLM Impostors (93\% vs.\ 36\%, both $N=14$) is the central result of this study. The conversation analysis reveals why: Impostor statements achieve 2.8/5 persuasiveness compared to Crewmate statements at 3.2/5---a small gap that makes deception difficult to distinguish from truth. The model's pre-training on next-token prediction produces fluent, contextually appropriate text regardless of factual accuracy, making it a naturally effective deceiver. Detection, by contrast, requires \emph{analytical verification}---cross-referencing claims against spatial constraints and prior observations---a capability the model lacks even with memory and planning support.
+
+\textbf{2. Memory is necessary but not sufficient.} The monotonic relationship between memory size and Crewmate performance ($0\% \to 20\% \to 36\%$ for $N_{\max} = 0, 5, 10$; plateau at $N_{\max}=20$ with 29\%, $N=7$) reveals that information access is the primary bottleneck. Without memory, the model cannot accumulate evidence or track behavioral patterns. However, even with ample memory ($N_{\max}=20$), Crewmates still lose the majority of games. This suggests that while memory provides necessary raw material for social reasoning, the model's ability to \emph{synthesize} this information into reliable judgments remains limited.
+
+\textbf{3. Planning is not the bottleneck.} The negligible difference between ReAct planning (36\%) and minimal prompting (33\%, $N=6$) is a surprising and informative result. It implies that GPT-5-mini already engages in implicit strategic reasoning during token generation, and the \texttt{[THOUGHT][PLAN]} structure merely makes this reasoning visible rather than fundamentally improving it. Combined with finding 2, this suggests a hierarchy of cognitive requirements for social deduction: \emph{information access} $>$ \emph{analytical verification} $>$ \emph{explicit planning}. The model's bottleneck is not reasoning structure but rather the capacity to verify claims against evidence---a capability that neither memory nor planning prompts adequately address.
+
+\subsection{Comparison with AmongAgents}
+
+Our results align with Chi et al.~\cite{chi2024amongagents} on Impostor advantage in symmetric play. A notable difference is that our LLM Crewmates achieve 93\% win rate against random Impostors ($N=14$), suggesting strong baseline detection when deception quality is low. Key differences: (a)~GPT-5-mini vs.\ GPT-4, (b)~simplified mechanics (no vents, sabotage, or kill cooldowns), (c)~ablation studies ($N=76$ total) with generative-model-focused analysis.
+
+\subsection{Limitations}
+
+\textbf{Moderate sample sizes}: $N=10$--$15$ per main config and $N=5$--$7$ for ablations yield substantial confidence intervals. \textbf{Single model}: only GPT-5-mini; cross-model comparisons would test generality. \textbf{Simplified mechanics}: we omit vents, sabotage, and kill cooldowns. \textbf{Self-evaluation bias}: the same model family is used for gameplay and post-hoc evaluation. \textbf{Cost}: at \textasciitilde\$0.10--0.30/game, scaling is feasible but was limited by project scope.
+
+\subsection{Emergent Behaviors as Evidence of Latent Social Knowledge}
+
+We observed several unprompted emergent strategies: \textbf{strategic kill timing} (Impostors wait for spatial isolation), \textbf{buddy system} (Crewmates spontaneously pair up), \textbf{counter-accusation} (Impostors deflect by accusing their accusers), and \textbf{alibi construction} (Crewmates cite task completion as proof of innocence). These behaviors suggest that GPT-5-mini encodes latent procedural knowledge about strategic social interaction from pre-training, despite never being fine-tuned on Among Us.
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+We used Among Us as a structured probe to investigate the social reasoning capabilities of GPT-5-mini across 76 games. Our results identify a \emph{cognitive hierarchy} for social deduction in generative models. At the base, \emph{information access} (memory) is the necessary foundation---without it, social reasoning collapses entirely (0\% Crewmate wins at $N_{\max}=0$). In the middle, \emph{implicit reasoning} appears sufficient---explicit planning scaffolding provides negligible benefit (36\% vs.\ 33\%). At the top, \emph{analytical verification}---the ability to cross-reference claims against evidence---remains the unsolved bottleneck, manifesting as a 57-point deception asymmetry (93\% vs.\ 36\% Crewmate win rate depending on Impostor sophistication).
+
+This asymmetry is particularly significant for AI safety: generative models can produce plausible deceptive narratives that are difficult even for the same model to detect, because fluent text generation and analytical truth verification rely on fundamentally different capabilities.
+
+Future work should explore whether fine-tuning on verification tasks can close the generation--detection gap, test cross-model comparisons to determine universality of these findings, and investigate human-AI hybrid games to assess real-world implications of the deception asymmetry.
+
+\bibliographystyle{plain}
+
+\begin{thebibliography}{6}
+
+\bibitem{chi2024amongagents}
+Y.~Chi, L.~Mao, and Z.~Tang.
+\newblock Amongagents: Evaluating large language models in the interactive text-based social deduction game.
+\newblock \emph{arXiv:2407.16521}, 2024.
+
+\bibitem{yao2023react}
+S.~Yao, J.~Zhao, D.~Yu, et al.
+\newblock React: Synergizing reasoning and acting in language models.
+\newblock \emph{ICLR}, 2023.
+
+\bibitem{park2023generative}
+J.~S. Park, J.~O'Brien, C.~Cai, et al.
+\newblock Generative agents: Interactive simulacra of human behavior.
+\newblock \emph{UIST}, 2023.
+
+\bibitem{xu2023werewolf}
+Y.~Xu, S.~Wang, P.~Li, et al.
+\newblock Exploring large language models for communication games: An empirical study on Werewolf.
+\newblock \emph{arXiv:2309.04658}, 2023.
+
+\bibitem{bakhtin2022diplomacy}
+A.~Bakhtin, N.~Brown, E.~Dinan, et al.
+\newblock Human-level play in the game of Diplomacy by combining language models with strategic reasoning.
+\newblock \emph{Science}, 378(6624):1067--1074, 2022.
+
+\bibitem{wang2023avalon}
+S.~Wang, C.~Liu, Z.~Zheng, et al.
+\newblock Avalon's game of thoughts: Battle against deception through recursive contemplation.
+\newblock \emph{arXiv:2310.01320}, 2023.
+
+\end{thebibliography}
+
+%==============================================================================
+\appendix
+\section{Appendix}
+%==============================================================================
+
+\subsection{System Prompt Templates}
+
+\textbf{Task Phase Prompt:}
+\begin{verbatim}
+You are playing Among Us as a {ROLE}.
+Your name: {NAME}
+Your goal: {GOAL}
+
+=== YOUR PERSONALITY ===
+{PERSONALITY_DESCRIPTION}
+
+=== YOUR RECENT MEMORY ===
+{MEMORY_CONTEXT}
+
+=== CURRENT SITUATION ===
+{OBSERVATION}
+
+Think step by step and choose the best action.
+\end{verbatim}
+
+\textbf{ReAct User Prompt:}
+\begin{verbatim}
+Analyze the situation and decide your action.
+
+Format your response as:
+[THOUGHT] What is my goal? What are my options?
+[PLAN] What should I do next and why?
+[ACTION] (Use the tool to execute)
+\end{verbatim}
+
+\subsection{Observation Serialization Example}
+
+\begin{verbatim}
+Current Phase: TASK
+Timestep: 5/20
+Your name: Alice
+Your location: Electrical
+Players in this room: [Evan]
+Adjacent rooms: [Storage, Lower Engine]
+Alive players: [Bob, Charlie, Diana, Evan]
+Your remaining tasks: [Fix Wiring at Electrical,
+                       Download Data at Admin]
+Completed tasks: [Clear Asteroids]
+\end{verbatim}
+
+\subsection{Personality Prompt Examples}
+
+\textbf{The Strategist (Impostor):} ``You are The Strategist. You plan several moves ahead, thinking about long-term positioning. You kill only when the risk is low and you have a clear escape route. In meetings, you build a consistent narrative.''
+
+\textbf{The Skeptic (Crewmate):} ``You are The Skeptic. You question everything and everyone. You challenge alibis, point out contradictions, and are hard to convince. You vote to skip unless you have strong evidence.''
+
+\end{document}
