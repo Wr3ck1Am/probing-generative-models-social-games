@@ -6,7 +6,7 @@ import json
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-# ── 虚拟地图（Among Us风格简化版）──────────────────────
+# Simplified Among Us map
 MAP = {
     "Cafeteria": ["Weapons", "MedBay", "Admin"],
     "Weapons": ["Cafeteria", "O2"],
@@ -17,14 +17,14 @@ MAP = {
     "O2": ["Weapons"],
 }
 
-# ── 游戏状态 ──────────────────────────────────────────
+# Game state
 game_state = {
     "player_location": "Cafeteria",
     "visited_rooms": ["Cafeteria"],
     "step": 0
 }
 
-# ── 定义工具：移动到相邻房间 ───────────────────────────
+# Tool definition: move to an adjacent room
 tools = [
     {
         "name": "move_to_room",
@@ -42,7 +42,7 @@ tools = [
     }
 ]
 
-# ── 工具执行函数 ───────────────────────────────────────
+# Tool execution
 def execute_move(target_room: str) -> dict:
     current = game_state["player_location"]
     
@@ -59,11 +59,11 @@ def execute_move(target_room: str) -> dict:
         "adjacent_rooms": MAP[target_room]
     }
 
-# ── Agent主循环 ────────────────────────────────────────
+# Agent loop
 def run_agent(max_steps=5):
     messages = []
     
-    # 初始System Prompt
+    # System prompt
     system_prompt = """You are exploring a spaceship. Your goal is to visit as many different rooms as possible in 5 steps.
 
 Current map connections:
@@ -74,7 +74,7 @@ Visited rooms: {game_state['visited_rooms']}
 
 Think strategically about which rooms to visit to maximize coverage."""
 
-    # 第一个用户消息
+    # Initial user message
     messages.append({
         "role": "user",
         "content": f"You are in {game_state['player_location']}. Adjacent rooms: {MAP[game_state['player_location']]}. Where do you want to go?"
@@ -86,7 +86,7 @@ Think strategically about which rooms to visit to maximize coverage."""
         print(f"Current location: {game_state['player_location']}")
         print(f"{'='*60}")
         
-        # 调用Claude
+        # Call LLM
         response = client.messages.create(
             model="claude-sonnet-4-5-20250929",
             max_tokens=1024,
@@ -97,9 +97,9 @@ Think strategically about which rooms to visit to maximize coverage."""
         
         print(f"\nClaude's response: {response.stop_reason}")
         
-        # 处理响应
+        # Handle response
         if response.stop_reason == "tool_use":
-            # Claude决定调用工具
+            # Tool use requested
             tool_use_block = next(block for block in response.content if block.type == "tool_use")
             tool_name = tool_use_block.name
             tool_input = tool_use_block.input
@@ -107,14 +107,14 @@ Think strategically about which rooms to visit to maximize coverage."""
             print(f"  Tool called: {tool_name}")
             print(f"  Input: {tool_input}")
             
-            # 执行工具
+            # Execute tool
             result = execute_move(tool_input["target_room"])
             print(f"  Result: {result}")
             
-            # 把Claude的响应加入历史
+            # Append assistant response to history
             messages.append({"role": "assistant", "content": response.content})
             
-            # 把工具结果回传
+            # Return tool result
             messages.append({
                 "role": "user",
                 "content": [
@@ -127,7 +127,7 @@ Think strategically about which rooms to visit to maximize coverage."""
             })
             
         elif response.stop_reason == "end_turn":
-            # Claude完成了思考，继续下一步
+            # End of turn, prompt to continue
             messages.append({"role": "assistant", "content": response.content})
             messages.append({
                 "role": "user",

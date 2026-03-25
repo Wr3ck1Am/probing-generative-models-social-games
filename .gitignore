@@ -44,11 +44,3 @@ report/*.synctex.gz
 # Jupyter
 .ipynb_checkpoints/
 
-# Misc junk files
-amongagents/#
-amongagents/Agent基类
-amongagents/key等）
-amongagents/主循环
-amongagents/地图定义
-amongagents/游戏状态管理
-amongagents/配置（API

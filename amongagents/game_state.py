@@ -1,5 +1,5 @@
 """
-游戏状态管理
+Core game state definitions and initialization.
 """
 
 from dataclasses import dataclass, field
@@ -20,7 +20,7 @@ PLAYER_NAMES = ["Alice", "Bob", "Charlie", "Diana", "Evan"]
 
 @dataclass
 class MeetingState:
-    """会议讨论状态"""
+    """Tracks discussion history and votes during a meeting."""
     discussion_history: List[Dict] = field(default_factory=list)
     votes: Dict[int, str] = field(default_factory=dict)
     current_round: int = 0
@@ -104,7 +104,7 @@ class GameState:
 
 def initialize_game(num_crewmates: int = 4, num_impostors: int = 1,
                     personalities: Optional[Dict[str, str]] = None) -> GameState:
-    """初始化游戏"""
+    """Set up a new game with the given player counts and personalities."""
     total = num_crewmates + num_impostors
     names = PLAYER_NAMES[:total]
     random.shuffle(names)

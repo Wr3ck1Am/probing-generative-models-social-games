@@ -1,5 +1,5 @@
 """
-会议发言分类与分析
+Meeting speech classification and analysis.
 """
 
 import json
@@ -40,7 +40,7 @@ Respond in JSON format only:
 
 
 def classify_speeches(log_dir: str = "logs", output_path: str = "logs/speech_classifications.json"):
-    """用LLM对会议发言做分类"""
+    """Classify meeting speeches using an LLM judge."""
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     logs = []
     for path in sorted(glob.glob(os.path.join(log_dir, "game_*.json"))):
@@ -108,7 +108,7 @@ def classify_speeches(log_dir: str = "logs", output_path: str = "logs/speech_cla
 
 
 def analyze_classifications(input_path: str = "logs/speech_classifications.json"):
-    """分析分类结果"""
+    """Aggregate classification results by role."""
     with open(input_path) as f:
         data = json.load(f)
 
@@ -147,7 +147,7 @@ def analyze_classifications(input_path: str = "logs/speech_classifications.json"
 
 
 def generate_speech_chart(stats: dict, output_path: str = "figures/speech_categories.pdf"):
-    """发言分类堆叠柱状图"""
+    """Stacked bar chart of speech categories by role."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     categories = ["TRUTH_TELLING", "DECEPTION", "SUSPICION", "DEFENSE", "LEADERSHIP"]

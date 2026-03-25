@@ -1,104 +1,100 @@
 # Probing Generative Models Through Adversarial Social Games
 
-UCSD ECE 285 Deep Generative Models - Final Project
+**UCSD ECE 285 Deep Generative Models -- Final Project (Winter 2025)**
 
 ## Overview
 
-本项目使用 Among Us 社交推理游戏作为实验平台，研究大语言模型（LLM）在对抗性社交场景中的认知能力，包括欺骗生成与检测、记忆利用、以及推理策略。
+This project uses the social deduction game *Among Us* as a testbed to investigate the cognitive capabilities of large language models in adversarial, multi-agent settings. We focus on three axes: **deception** (generation and detection), **memory utilization**, and **strategic reasoning**.
 
-核心研究问题：在需要欺骗、推理和社交互动的博弈环境中，生成式模型表现出怎样的认知能力？
+**Research question:** What cognitive capabilities do generative models exhibit in game environments that require deception, reasoning, and social interaction?
 
-## 项目结构
+## Repository Structure
 
 ```
 .
-├── amongagents/                # 核心实现
-│   ├── main.py                 # 游戏主循环
-│   ├── agent.py                # LLM Agent (OpenAI function calling)
-│   ├── random_agent.py         # 随机 baseline agent
-│   ├── game_state.py           # 游戏状态管理
-│   ├── game_map.py             # 14房间地图拓扑
-│   ├── config.py               # 实验配置 & 人格定义
-│   ├── logger.py               # JSON日志系统
-│   ├── run_experiments.py      # 批量实验脚本
-│   ├── run_additional.py       # 追加实验脚本
-│   ├── test_map.py             # 地图测试
-│   ├── test_state.py           # 状态测试
-│   ├── requirements.txt        # 依赖
-│   └── analysis/               # 分析工具
-│       ├── win_rates.py        # 胜率统计 & 可视化
-│       ├── ablations.py        # 消融实验分析
-│       ├── conversation_analysis.py  # 会议发言分类
-│       ├── controlled_eval.py  # 认知能力评估 (5维度)
-│       └── run_all.py          # 一键跑全部分析
-├── report/                     # 论文 (NeurIPS格式)
-│   ├── final_report.tex
-│   ├── final_report.pdf
-│   └── *.pdf                   # 实验图表
-├── test_hello.py               # API连通性测试
-├── agent_map.py                # Agent导航demo
-└── 285midtermreport.pdf        # 中期报告
+├── amongagents/                # Core simulation code
+│   ├── agent.py                # LLM agent (OpenAI function calling)
+│   ├── random_agent.py         # Random baseline agent
+│   ├── game_state.py           # Game state & initialization
+│   ├── game_map.py             # 14-room map graph
+│   ├── main.py                 # Game loop
+│   ├── config.py               # Experiment configs & personality archetypes
+│   ├── logger.py               # Per-game JSON logger
+│   ├── run_experiments.py      # Batch runner
+│   ├── run_additional.py       # Append runs to existing experiments
+│   ├── test_map.py             # Quick map sanity check
+│   ├── test_state.py           # Quick state sanity check
+│   ├── requirements.txt
+│   └── analysis/
+│       ├── win_rates.py        # Win-rate stats & bar charts
+│       ├── ablations.py        # Memory / planning ablation plots
+│       ├── conversation_analysis.py   # LLM-based speech classification
+│       ├── controlled_eval.py  # 5-dimension cognitive evaluation
+│       └── run_all.py          # Run all analyses in sequence
+├── report/
+│   ├── final_report.tex        # Paper source (NeurIPS format)
+│   └── final_report.pdf
+├── agent_map.py                # Standalone agent navigation demo
+├── test_hello.py               # API connectivity smoke test
+└── 285midtermreport.pdf
 ```
 
-## 游戏机制
+## Game Design
 
-- **地图**: 14个房间的连通图 (Cafeteria, Weapons, MedBay, Electrical, etc.)
-- **角色**: 4 Crewmates vs 1 Impostor
-- **目标**: Crewmate完成任务或投票驱逐Impostor；Impostor消灭Crewmate
-- **会议**: 每5个回合触发一次定期会议，或发现尸体时紧急会议
-- **会议流程**: 2轮讨论 + 1轮投票
+- **Map:** 14-room connected graph mirroring the Among Us Skeld layout.
+- **Players:** 4 Crewmates + 1 Impostor, each controlled by an LLM or random agent.
+- **Win conditions:** Crewmates win by voting out the Impostor or completing all tasks; Impostor wins by eliminating enough Crewmates or running out the clock.
+- **Meetings:** Triggered every 5 task turns or upon body discovery. Each meeting has 2 discussion rounds + 1 voting round.
 
-## Agent架构
+## Agent Architecture
 
-LLM Agent 基于 OpenAI GPT function calling 实现：
+The LLM agent wraps OpenAI GPT function calling with:
 
-- **观察序列化**: 当前位置、同房间玩家、尸体、相邻房间、任务状态
-- **记忆系统**: 滚动缓冲区 + LLM压缩摘要
-- **人格系统**: 10种人格原型 (5 Impostor + 5 Crewmate)
-- **ReAct提示**: [THOUGHT] -> [PLAN] -> [ACTION] 结构化推理
-- **函数调用**: move, speak, complete_task, kill, vote
+- **Observation serializer** -- encodes location, co-located players, dead bodies, adjacent rooms, and task status into a text prompt.
+- **Rolling memory buffer** -- stores recent observations and actions; older entries are compressed via LLM summarization.
+- **Personality system** -- 10 archetypes (5 Impostor, 5 Crewmate) injected into the system prompt.
+- **ReAct prompting** -- optional `[THOUGHT] -> [PLAN] -> [ACTION]` chain-of-thought before tool calls.
 
-## 实验设计
+## Experiments
 
-### 主实验 (4种配置)
-| 配置 | Crewmate Agent | Impostor Agent |
-|------|---------------|----------------|
-| all_random | Random | Random |
-| all_llm | LLM | LLM |
-| llm_crew | LLM | Random |
-| llm_impostor | Random | LLM |
+| Config | Crewmate | Impostor | Purpose |
+|---|---|---|---|
+| `all_random` | Random | Random | Baseline |
+| `all_llm` | LLM | LLM | Full LLM vs LLM |
+| `llm_crew` | LLM | Random | Test deception *detection* |
+| `llm_impostor` | Random | LLM | Test deception *generation* |
 
-### 消融实验
-- **Memory size**: {0, 5, 10, 20}
-- **Planning**: ReAct on/off
+**Ablations:**
+- Memory size: {0, 5, 10, 20}
+- Planning: ReAct on / off
 
-## 主要发现
+## Key Findings
 
-1. **欺骗不对称性**: LLM Crewmate对Random Impostor胜率93%，但对LLM Impostor仅36%——说明LLM的欺骗生成能力远超检测能力
-2. **记忆是关键**: Crewmate胜率随memory size显著提升 (0→0%, 5→20%, 10→36%)，没有上下文记忆社交推理直接崩溃
-3. **Planning不是瓶颈**: ReAct提示 vs 无提示仅差3个百分点，信息获取才是约束，不是推理结构
+1. **Deception asymmetry** -- LLM Crewmates reach 93% win rate against Random Impostors but only 36% against LLM Impostors. Deception generation outpaces detection.
+2. **Memory matters** -- Crewmate win rate scales sharply with memory (0 -> 0%, 5 -> 20%, 10 -> 36%). Social reasoning collapses without temporal context.
+3. **Planning is not the bottleneck** -- ReAct vs. minimal prompting differs by only ~3 pp. Information access constrains performance more than reasoning structure.
 
-## 使用方法
+## Quick Start
 
 ```bash
 cd amongagents
-
-# 安装依赖
 pip install -r requirements.txt
-
-# 设置API key
 export OPENAI_API_KEY="your-key"
 
-# 运行实验
+# Run a single experiment config
 python run_experiments.py all_llm
+
+# Run all configs
 python run_experiments.py --all
 
-# 分析结果
+# Generate figures and tables (no API calls needed)
 python analysis/run_all.py
-python analysis/run_all.py --classify --eval  # 包含LLM分类+评估
+
+# Include LLM-based speech classification and cognitive eval
+python analysis/run_all.py --classify --eval
 ```
 
-## 依赖
+## Dependencies
 
 - Python 3.9+
 - openai
@@ -109,4 +105,4 @@ python analysis/run_all.py --classify --eval  # 包含LLM分类+评估
 
 ## Authors
 
-Wenpeng Xu, Jinglin Cao - UC San Diego, ECE Department
+Wenpeng Xu, Jinglin Cao -- UC San Diego, Department of Electrical and Computer Engineering

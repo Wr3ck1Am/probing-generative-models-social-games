@@ -1,8 +1,8 @@
 """
-一键跑全部分析
+Run all analysis stages.
 
-    python analysis/run_all.py                    # 只跑统计+画图
-    python analysis/run_all.py --classify --eval  # 包含LLM分类和评估
+    python analysis/run_all.py                    # stats + figures only
+    python analysis/run_all.py --classify --eval  # includes LLM classification & evaluation
 """
 
 import sys

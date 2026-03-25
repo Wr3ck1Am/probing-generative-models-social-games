@@ -1,5 +1,5 @@
 """
-Among Us 14房间地图拓扑
+Among Us map topology (14 rooms).
 """
 
 from dataclasses import dataclass
@@ -10,7 +10,7 @@ class Room:
     name: str
     connections: List[str]
     
-# 房间连接关系
+# Room adjacency graph
 ROOM_CONNECTIONS = {
     "Cafeteria": ["Weapons", "Upper Engine", "MedBay", "Admin"],
     "Weapons": ["Cafeteria", "O2", "Navigation"],
@@ -28,7 +28,7 @@ ROOM_CONNECTIONS = {
     "Admin": ["Cafeteria", "Storage"],
 }
 
-# 房间任务
+# Tasks available in each room
 ROOM_TASKS = {
     "Cafeteria": ["Empty Garbage", "Fix Wiring"],
     "Weapons": ["Clear Asteroids", "Download Data"],

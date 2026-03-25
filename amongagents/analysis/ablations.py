@@ -1,5 +1,5 @@
 """
-消融实验分析
+Ablation study analysis (memory size & planning).
 """
 
 import json
@@ -22,7 +22,7 @@ def load_summaries(log_dir: str = "logs") -> dict:
 
 
 def analyze_memory_ablation(summaries: dict) -> dict:
-    """分析memory size的消融结果"""
+    """Compare win rates across different memory buffer sizes."""
     memory_configs = {
         0: "memory_0",
         5: "memory_5",
@@ -45,7 +45,7 @@ def analyze_memory_ablation(summaries: dict) -> dict:
 
 
 def analyze_planning_ablation(summaries: dict) -> dict:
-    """分析planning开关的消融"""
+    """Compare win rates with and without ReAct planning."""
     results = {}
     for label, config_name in [("With Planning", "all_llm"), ("No Planning", "no_planning")]:
         if config_name in summaries:

@@ -1,5 +1,5 @@
 """
-随机baseline agent
+Random baseline agent for control experiments.
 """
 
 import random
@@ -13,7 +13,7 @@ class RandomAgent:
         self.player = player
 
     def decide_action(self, game_state: GameState) -> tuple:
-        """选一个随机动作"""
+        """Pick a uniformly random legal action."""
         if game_state.phase == Phase.TASK:
             actions = self._get_task_actions(game_state)
         else:

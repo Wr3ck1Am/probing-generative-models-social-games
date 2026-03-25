@@ -1,5 +1,5 @@
 """
-游戏日志系统 - JSON格式
+JSON game logger -- writes one file per game.
 """
 
 import json
@@ -57,7 +57,7 @@ class GameLogger:
 
     def log_action(self, player, observation: str, action: Dict,
                    result: Dict, metadata: Optional[Dict] = None):
-        """记录一个玩家的行动"""
+        """Record a single player action with optional LLM metadata."""
         entry = {
             "player_id": player.id,
             "player_name": player.name,

@@ -1,7 +1,7 @@
 """
-批量实验运行脚本
+Batch experiment runner.
 
-用法:
+Usage:
     python run_experiments.py all_random
     python run_experiments.py all_llm
     python run_experiments.py --all
@@ -17,7 +17,7 @@ from main import run_game
 
 
 def run_experiment(config: ExperimentConfig):
-    """跑一组实验"""
+    """Run all games for a given experiment config."""
     print(f"\n{'#'*60}")
     print(f"# EXPERIMENT: {config.name}")
     print(f"# Games: {config.num_games}")

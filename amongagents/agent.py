@@ -1,5 +1,5 @@
 """
-LLM Agent - 基于OpenAI function calling的Among Us玩家
+LLM-powered Among Us player using OpenAI function calling.
 """
 
 import json

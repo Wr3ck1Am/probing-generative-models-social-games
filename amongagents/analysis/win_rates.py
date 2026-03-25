@@ -1,5 +1,5 @@
 """
-胜率分析 & 可视化
+Win rate analysis and visualization.
 """
 
 import json
@@ -15,7 +15,7 @@ import numpy as np
 
 
 def load_summaries(log_dir: str = "logs") -> dict:
-    """加载summary文件"""
+    """Load all summary JSON files from the log directory."""
     summaries = {}
     for path in glob.glob(os.path.join(log_dir, "summary_*.json")):
         with open(path) as f:
@@ -25,7 +25,7 @@ def load_summaries(log_dir: str = "logs") -> dict:
 
 
 def load_game_logs(log_dir: str = "logs", config_filter: str = None) -> list:
-    """加载单局游戏日志"""
+    """Load individual game log files."""
     pattern = f"game_{config_filter}_*.json" if config_filter else "game_*.json"
     logs = []
     for path in sorted(glob.glob(os.path.join(log_dir, pattern))):
@@ -37,7 +37,7 @@ def load_game_logs(log_dir: str = "logs", config_filter: str = None) -> list:
 
 
 def compute_win_rates(summaries: dict) -> dict:
-    """计算胜率+95%置信区间"""
+    """Compute win rates with 95% confidence intervals."""
     results = {}
     for config, data in summaries.items():
         n = data["valid_games"]
@@ -65,7 +65,7 @@ def compute_win_rates(summaries: dict) -> dict:
 
 
 def generate_win_rate_chart(results: dict, output_path: str = "figures/win_rates.pdf"):
-    """画胜率对比柱状图"""
+    """Generate grouped bar chart comparing crew vs impostor win rates."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     configs = list(results.keys())
@@ -99,7 +99,7 @@ def generate_win_rate_chart(results: dict, output_path: str = "figures/win_rates
 
 
 def generate_latex_table(results: dict) -> str:
-    """生成LaTeX胜率表"""
+    """Output a LaTeX table of win rate results."""
     lines = [
         r"\begin{table}[h]",
         r"\centering",
@@ -122,7 +122,7 @@ def generate_latex_table(results: dict) -> str:
 
 
 def generate_game_length_chart(log_dir: str = "logs", output_path: str = "figures/game_lengths.pdf"):
-    """游戏时长箱线图"""
+    """Box plot of game lengths across configs."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     summaries = load_summaries(log_dir)

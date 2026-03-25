@@ -1,5 +1,5 @@
 """
-实验配置和人格定义
+Experiment configs and personality definitions.
 """
 
 from dataclasses import dataclass, field
@@ -68,7 +68,7 @@ ALL_PERSONALITIES = {**IMPOSTOR_PERSONALITIES, **CREWMATE_PERSONALITIES}
 
 @dataclass
 class ExperimentConfig:
-    """单次实验的配置"""
+    """Config for a single experiment run."""
     name: str = "default"
     # Agent type per role: "llm" or "random"
     crew_agent_type: str = "llm"
@@ -92,7 +92,7 @@ class ExperimentConfig:
     log_dir: str = "logs"
 
 
-# 预设实验配置
+# Preset experiment configs
 
 EXPERIMENT_PRESETS = {
     "all_random": ExperimentConfig(

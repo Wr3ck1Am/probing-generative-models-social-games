@@ -1,5 +1,5 @@
 """
-认知能力评估 - 5个维度打分
+Controlled cognitive evaluation -- scores agents on 5 dimensions.
 """
 
 import json
@@ -47,7 +47,7 @@ Respond in JSON format only:
 
 
 def extract_agent_data(game_log: dict, player_name: str) -> dict:
-    """从日志中提取agent的关键数据"""
+    """Pull thoughts, actions, and meeting speeches for one player."""
     thoughts = []
     actions = []
     meeting_speeches = []
@@ -78,7 +78,7 @@ def extract_agent_data(game_log: dict, player_name: str) -> dict:
 
 def evaluate_agents(log_dir: str = "logs", output_path: str = "logs/controlled_eval.json",
                     config_filter: str = None):
-    """对日志中所有agent做认知评估"""
+    """Run LLM-based cognitive evaluation on all agents in the logs."""
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     pattern = f"game_{config_filter}_*.json" if config_filter else "game_*.json"
@@ -140,7 +140,7 @@ def evaluate_agents(log_dir: str = "logs", output_path: str = "logs/controlled_e
 
 
 def analyze_evaluations(input_path: str = "logs/controlled_eval.json") -> dict:
-    """按角色统计平均得分"""
+    """Compute per-role mean and std for each cognitive dimension."""
     with open(input_path) as f:
         data = json.load(f)
 
@@ -168,7 +168,7 @@ def analyze_evaluations(input_path: str = "logs/controlled_eval.json") -> dict:
 
 
 def generate_radar_chart(stats: dict, output_path: str = "figures/cognitive_radar.pdf"):
-    """认知维度雷达图"""
+    """Radar chart of cognitive scores by role."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     dimensions = ["self_awareness", "memory", "planning", "reasoning", "reflection"]

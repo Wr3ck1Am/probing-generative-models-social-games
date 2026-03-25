@@ -1,5 +1,5 @@
 """
-主游戏循环
+Main game loop -- runs a single Among Us game to completion.
 """
 
 import os
@@ -16,7 +16,7 @@ from logger import GameLogger
 
 
 def create_agents(game: GameState, config: ExperimentConfig):
-    """根据config创建agent"""
+    """Instantiate LLM or Random agents based on experiment config."""
     from agent import AmongUsAgent
     from random_agent import RandomAgent
 
@@ -43,7 +43,7 @@ def create_agents(game: GameState, config: ExperimentConfig):
 
 
 def execute_action(player, action: Dict, game: GameState) -> Dict:
-    """执行玩家动作"""
+    """Execute a player's chosen action and return the result."""
     act = action.get("action", "idle")
     params = action.get("params", {})
 
@@ -88,7 +88,7 @@ def execute_action(player, action: Dict, game: GameState) -> Dict:
 
 
 def check_body_discovery(game: GameState) -> Optional[Dict]:
-    """检查是否有玩家发现尸体"""
+    """Check if any alive crewmate is in the same room as a dead body."""
     for body in game.dead_bodies:
         for player in game.get_alive_players():
             # The killer shouldn't trigger discovery on their own kill in the same step
@@ -103,7 +103,7 @@ def check_body_discovery(game: GameState) -> Optional[Dict]:
 def run_meeting(game: GameState, agents: Dict, logger: GameLogger,
                 trigger_reason: str = "scheduled",
                 body_info: Optional[Dict] = None):
-    """2轮讨论 + 1轮投票"""
+    """Run a meeting: 2 discussion rounds followed by 1 voting round."""
     meeting = MeetingState(trigger_reason=trigger_reason)
     if body_info:
         meeting.body_found_by = body_info["finder"]
@@ -188,7 +188,7 @@ def run_meeting(game: GameState, agents: Dict, logger: GameLogger,
 
 
 def run_game(config: ExperimentConfig, run_id: int = 0) -> Dict:
-    """跑一局游戏，返回结果"""
+    """Play one full game and return the outcome dict."""
     personalities = config.personality_config if config.personality_config else None
     game = initialize_game(
         num_crewmates=config.num_crewmates,

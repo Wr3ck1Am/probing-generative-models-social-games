@@ -1,5 +1,5 @@
 """
-追加实验脚本 - 在已有日志基础上继续跑更多game
+Append more game runs to an existing experiment without overwriting logs.
 """
 
 import os
@@ -12,7 +12,7 @@ from main import run_game
 
 
 def get_next_run_id(log_dir: str, config_name: str) -> int:
-    """找到下一个可用的run_id"""
+    """Find the next available run_id by scanning existing log files."""
     existing = glob.glob(os.path.join(log_dir, f"game_{config_name}_*.json"))
     if not existing:
         return 0
@@ -29,7 +29,7 @@ def get_next_run_id(log_dir: str, config_name: str) -> int:
 
 
 def run_additional(config_name: str, additional_games: int):
-    """在已有基础上追加游戏"""
+    """Run additional games on top of whatever already exists."""
     if config_name not in EXPERIMENT_PRESETS:
         print(f"Unknown config: {config_name}")
         return
