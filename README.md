@@ -1,4 +1,4 @@
-# AmongAgents: Probing Generative Models Through Social Deduction Games
+# Probing Generative Models Through Adversarial Social Games
 
 UCSD ECE 285 Deep Generative Models - Final Project
 
